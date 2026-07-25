@@ -1,10 +1,13 @@
-FROM python:3.10-slim
+FROM ubuntu:22.04
 
 # Bỏ qua bước chờ tương tác chọn múi giờ
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Cài đặt trọn bộ thư viện C++, Free Pascal, Java
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Cài đặt trọn bộ Python, C++, Free Pascal, Java trên Ubuntu 22.04 chuẩn DMOJ
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-dev \
     build-essential \
     libseccomp-dev \
     gcc \
@@ -16,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Cài đặt dmoj máy chấm
-RUN pip install --no-cache-dir dmoj
+RUN pip3 install --no-cache-dir dmoj
 
 WORKDIR /app
 
