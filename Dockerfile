@@ -1,0 +1,24 @@
+FROM python:3.10-slim
+
+# Cài đặt trọn bộ thư viện bảo mật seccomp, C++, Free Pascal, Java
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libseccomp-dev \
+    gcc \
+    g++ \
+    fpc \
+    openjdk-17-jdk \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Cài đặt dmoj máy chấm
+RUN pip install --no-cache-dir dmoj
+
+WORKDIR /app
+
+# Tự động cấu hình các trình biên dịch
+RUN dmoj-autoconf
+
+# Chạy máy chấm kết nối về Web Render 24/7
+CMD ["sh", "-c", "dmoj-judge -c judge.yml https://dmoj-phongdoanvadanem.onrender.com maycham01 '/8scDDobuNV+HrM5ox/wR3q1TtE1tbXYxJgw8YBpbAboAQQ0Mv1YVgP8gC3VS1K50rDubf11qVIdd4+C6wAGSp4dhaV7ZyNv5nVI' & python3 -m http.server $PORT"]
