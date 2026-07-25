@@ -1,7 +1,10 @@
 FROM python:3.10-slim
 
-# Cài đặt trọn bộ thư viện bảo mật seccomp, C++, Free Pascal, Java
-RUN apt-get update && apt-get install -y \
+# Bỏ qua bước chờ tương tác chọn múi giờ
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Cài đặt trọn bộ thư viện C++, Free Pascal, Java
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libseccomp-dev \
     gcc \
