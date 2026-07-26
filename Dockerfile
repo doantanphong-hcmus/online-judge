@@ -26,8 +26,9 @@ WORKDIR /app
 # Copy toàn bộ mã nguồn
 COPY . .
 
-# Cài đặt dependencies
+# Cài đặt dependencies Node và hạ setuptools để cài DMOJ mượt mà
 RUN npm install -g sass postcss postcss-cli autoprefixer
+RUN pip3 install --no-cache-dir --upgrade "setuptools<65.0.0" "wheel"
 RUN pip3 install --no-cache-dir -r requirements.txt mysqlclient dj-database-url gunicorn whitenoise dmoj
 
 # Biên dịch SCSS và cấu hình máy chấm
