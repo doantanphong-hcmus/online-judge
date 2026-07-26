@@ -2,8 +2,10 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Cài đặt trọn bộ Python3, Node.js, C++, Free Pascal, Java, libseccomp
-RUN apt-get update && apt-get install -y \
+# Cài đặt trọn bộ Node20, Python3, C++, Free Pascal, Java, libseccomp
+RUN apt-get update && apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y \
     python3 \
     python3-pip \
     python3-dev \
@@ -13,10 +15,8 @@ RUN apt-get update && apt-get install -y \
     g++ \
     fpc \
     openjdk-17-jdk \
-    curl \
     git \
     nodejs \
-    npm \
     pkg-config \
     default-libmysqlclient-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -34,7 +34,7 @@ RUN pip3 install --no-cache-dir --no-build-isolation -r requirements.txt mysqlcl
 # Biên dịch SCSS và cấu hình máy chấm
 RUN ./make_style.sh || true
 RUN mkdir -p static/jsi18n/vi static/jsi18n/en && touch static/jsi18n/vi/djangojs.js static/jsi18n/en/djangojs.js
-RUN python3 -m dmoj.autoconf > judge.yml || dmoj-autoconf > judge.yml
+RUN dmoj-autoconf > judge.yml
 
 # Tạo user judge
 RUN useradd -m -s /bin/bash judge && chown -R judge:judge /app
