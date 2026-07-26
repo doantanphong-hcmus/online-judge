@@ -26,18 +26,23 @@ WORKDIR /app
 # Copy toàn bộ mã nguồn
 COPY . .
 
-# Cài đặt dependencies Node và ghim setuptools==59.6.0 để cài DMOJ mượt mà
+# Cài đặt dependencies Node và setuptools
 RUN npm install -g sass postcss postcss-cli autoprefixer
 RUN pip3 install --no-cache-dir --upgrade "setuptools==59.6.0" "wheel" "setuptools-scm<7.0.0"
 RUN pip3 install --no-cache-dir --no-build-isolation -r requirements.txt mysqlclient dj-database-url gunicorn whitenoise dmoj
 
-# Biên dịch SCSS và cấu hình máy chấm
+# Tạo file local_settings.py chuẩn định nghĩa STATIC_ROOT và COMPRESS_ROOT
+RUN python3 -c "open('dmoj/local_settings.py', 'w').write('import os, dj_database_url\nfrom dmoj.settings import MIDDLEWARE\nfrom django.db.models.signals import post_save\nfrom django.dispatch import receiver\n\nDEBUG = True\nCOMPRESS_ENABLED = False\nALLOWED_HOSTS = [\"*\"]\nDMOJ_SITE_NAME = \"Lớp Chuyên Tin Học\"\nCELERY_TASK_ALWAYS_EAGER = True\nCELERY_TASK_EAGER_PROPAGATES = True\nAUTHENTICATION_BACKENDS = (\"django.contrib.auth.backends.ModelBackend\",)\nSECURE_PROXY_SSL_HEADER = (\"HTTP_X_FORWARDED_PROTO\", \"https\")\nCSRF_TRUSTED_ORIGINS = [\"https://*.onrender.com\", \"https://achuntersoj.onrender.com\"]\nREQUIRE_EMAIL_CONFIRMATION = False\nCONFIRM_INITIAL_EMAIL = False\nREGISTRATION_OPEN = True\nSITE_ID = 1\nEMAIL_BACKEND = \"django.core.mail.backends.console.EmailBackend\"\n\nMIDDLEWARE = (\"whitenoise.middleware.WhiteNoiseMiddleware\",) + tuple(MIDDLEWARE)\nSTATIC_ROOT = \"/app/staticfiles\"\nSTATIC_URL = \"/static/\"\nCOMPRESS_ROOT = \"/app/staticfiles\"\nSECRET_KEY = \"dmoj-secret-key-12345\"\nCACHES = {\"default\": {\"BACKEND\": \"django.core.cache.backends.locmem.LocMemCache\"}}\n\ndb = os.environ.get(\"DATABASE_URL\", \"\")\nDATABASES = {\"default\": dj_database_url.parse(db) if db else {\"ENGINE\": \"django.db.backends.sqlite3\", \"NAME\": \"/app/db.sqlite3\"}}\nDATABASES[\"default\"][\"OPTIONS\"] = {\"charset\": \"utf8mb4\"}\n\n@receiver(post_save, sender=\"auth.User\")\ndef auto_activate(sender, instance, created, **kwargs):\n    if created:\n        from django.contrib.auth.models import User\n        User.objects.filter(pk=instance.pk).update(is_active=True)\n')"
+
+# Biên dịch SCSS, thu gom static files và tạo cấu hình máy chấm
 RUN ./make_style.sh || true
 RUN mkdir -p static/jsi18n/vi static/jsi18n/en && touch static/jsi18n/vi/djangojs.js static/jsi18n/en/djangojs.js
+RUN python3 manage.py compilejsi18n || true
+RUN python3 manage.py collectstatic --noinput || true
 RUN dmoj-autoconf > judge.yml
 
 # Tạo user judge
 RUN useradd -m -s /bin/bash judge && chown -R judge:judge /app
 
-# Khởi chạy đồng thời cả Web chính, Bộ kết nối ngầm và Máy chấm bài 127.0.0.1
-CMD ["sh", "-c", "python3 manage.py runbridged & python3 -m dmoj.judge -c judge.yml 127.0.0.1 maycham01 '/8scDDobuNV+HrM5ox/wR3q1TtE1tbXYxJgw8YBpbAboAQQ0Mv1YVgP8gC3VS1K50rDubf11qVIdd4+C6wAGSp4dhaV7ZyNv5nVI' & gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --env DJANGO_SETTINGS_MODULE=dmoj.settings dmoj.wsgi:application"]
+# Tự động khởi tạo CSDL, Admin, Máy chấm maycham01 và bật toàn bộ hệ thống
+CMD ["sh", "-c", "python3 manage.py migrate && python3 manage.py shell -c \"from django.contrib.sites.models import Site; Site.objects.filter(id=1).update(domain='achuntersoj.onrender.com', name='DMOJ'); from django.contrib.auth.models import User; User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@gmail.com', 'admin123'); User.objects.update(is_active=True); from judge.models import Judge; Judge.objects.update_or_create(name='maycham01', defaults={'auth_key': '/8scDDobuNV+HrM5ox/wR3q1TtE1tbXYxJgw8YBpbAboAQQ0Mv1YVgP8gC3VS1K50rDubf11qVIdd4+C6wAGSp4dhaV7ZyNv5nVI', 'is_blocked': False})\" & python3 manage.py runbridged & python3 -m dmoj.judge -c judge.yml 127.0.0.1 maycham01 '/8scDDobuNV+HrM5ox/wR3q1TtE1tbXYxJgw8YBpbAboAQQ0Mv1YVgP8gC3VS1K50rDubf11qVIdd4+C6wAGSp4dhaV7ZyNv5nVI' & gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --env DJANGO_SETTINGS_MODULE=dmoj.settings dmoj.wsgi:application"]
